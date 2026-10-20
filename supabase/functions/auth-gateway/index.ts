@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
+import { isAllowedOrigin, isValidCompanyCode, isValidMobile, isValidPin, normalizeCompanyCode } from "./security.ts";
 
 const appOrigin = Deno.env.get("APP_ORIGIN");
 const corsHeaders = {
@@ -23,7 +24,7 @@ const authAlias = (mobile: string) => `${mobile}@mobile.auth.tailornetwork.inval
 Deno.serve(async (req) => {
   if (!appOrigin) return reply(500, { error: "Authentication service is not configured." });
   const requestOrigin = req.headers.get("origin");
-  if (requestOrigin && requestOrigin !== appOrigin) return reply(403, { error: "Origin not allowed." });
+  if (!isAllowedOrigin(requestOrigin, appOrigin)) return reply(403, { error: "Origin not allowed." });
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return reply(405, { error: "Method not allowed" });
 
@@ -39,7 +40,7 @@ Deno.serve(async (req) => {
   const action = body.action;
   const mobile = body.mobile;
   const pin = body.pin;
-  if (!validMobile(mobile) || !validPin(pin)) {
+  if (!isValidMobile(mobile) || !isValidPin(pin)) {
     return reply(400, { error: "10-digit mobile number aur 10-digit PIN required hai." });
   }
 
@@ -50,8 +51,8 @@ Deno.serve(async (req) => {
   if (action === "register-company") {
     const companyName = typeof body.companyName === "string" ? body.companyName.trim() : "";
     const name = typeof body.name === "string" ? body.name.trim() : "";
-    const companyCode = typeof body.companyCode === "string" ? body.companyCode.trim().toUpperCase() : "";
-    if (!companyName || !name || !companyCode || companyName.length > 120 || name.length > 120 || !/^[A-Z0-9-]{2,20}$/.test(companyCode)) {
+    const companyCode = normalizeCompanyCode(body.companyCode);
+    if (!companyName || !name || !isValidCompanyCode(companyCode) || companyName.length > 120 || name.length > 120) {
       return reply(400, { error: "Company name, valid company code aur owner name required hai." });
     }
 
