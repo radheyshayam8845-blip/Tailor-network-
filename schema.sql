@@ -256,13 +256,13 @@ create policy profiles_select_self on public.profiles
 create policy companies_select_admin on public.companies
   for select to authenticated using (id = (select private.my_company()));
 create policy companies_update_admin on public.companies
-  for update to authenticated using (id = (select public.my_company()))
-  with check (id = (select public.my_company()));
+  for update to authenticated using (id = (select private.my_company()))
+  with check (id = (select private.my_company()));
 
 create policy invitations_admin_all on public.invitations
   for all to authenticated
-  using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy invitations_tailor_select on public.invitations
   for select to authenticated using (tailor_user_id = (select auth.uid()));
 create policy invitations_tailor_respond on public.invitations
@@ -271,37 +271,37 @@ create policy invitations_tailor_respond on public.invitations
   with check (tailor_user_id = (select auth.uid()) and status in ('accepted','rejected'));
 
 create policy lines_admin_all on public.lines
-  for all to authenticated using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  for all to authenticated using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy workers_admin_all on public.workers
-  for all to authenticated using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  for all to authenticated using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy workers_tailor_select_own on public.workers
   for select to authenticated using (tailor_user_id = (select auth.uid()));
 create policy operations_admin_all on public.operations
-  for all to authenticated using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  for all to authenticated using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy styles_admin_all on public.styles
-  for all to authenticated using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  for all to authenticated using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy dept_allocations_admin_all on public.dept_allocations
-  for all to authenticated using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  for all to authenticated using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy work_entries_admin_all on public.work_entries
-  for all to authenticated using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  for all to authenticated using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy work_entries_tailor_select_own on public.work_entries
   for select to authenticated using ((select private.is_my_worker(worker_id)));
 create policy work_entries_tailor_insert_own on public.work_entries
   for insert to authenticated
   with check (
     entered_by = (select auth.uid())
-    and (select public.is_my_worker(worker_id))
+    and (select private.is_my_worker(worker_id))
     and company_id = (select w.company_id from public.workers w where w.id = worker_id and w.tailor_user_id = (select auth.uid()))
   );
 
 create policy subscription_invoices_admin_select on public.subscription_invoices
-  for select to authenticated using (company_id = (select public.my_company()));
+  for select to authenticated using (company_id = (select private.my_company()));
 -- Invoice writes are reserved for trusted server-side payment functions.
 
 -- Explicit table grants: RLS controls rows; grants control API/table reachability.
