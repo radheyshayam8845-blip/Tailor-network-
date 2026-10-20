@@ -1,7 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
 
+const appOrigin = Deno.env.get("APP_ORIGIN");
 const corsHeaders = {
-  "Access-Control-Allow-Origin": Deno.env.get("APP_ORIGIN") ?? "*",
+  ...(appOrigin ? { "Access-Control-Allow-Origin": appOrigin, "Vary": "Origin" } : {}),
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json",
@@ -20,6 +21,9 @@ const validPin = (value: unknown): value is string =>
 const authAlias = (mobile: string) => `${mobile}@mobile.auth.tailornetwork.invalid`;
 
 Deno.serve(async (req) => {
+  if (!appOrigin) return reply(500, { error: "Authentication service is not configured." });
+  const requestOrigin = req.headers.get("origin");
+  if (requestOrigin && requestOrigin !== appOrigin) return reply(403, { error: "Origin not allowed." });
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return reply(405, { error: "Method not allowed" });
 
@@ -108,7 +112,9 @@ Deno.serve(async (req) => {
       .eq("id", data.user.id)
       .single();
     if (profileError || !profile) {
-      await admin.auth.admin.signOut(data.session.access_token);
+      // Do not return the newly issued session unless a matching application profile exists.
+      // Supabase admin.auth.admin has no signOut(accessToken) method; the client below does not
+      // persist this session, and the token is never sent to the caller on this failure path.
       return reply(403, { error: "Account profile available nahi hai." });
     }
     return reply(200, {
