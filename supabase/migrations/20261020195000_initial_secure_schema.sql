@@ -40,7 +40,7 @@ create or replace function private.assign_profile_global_id()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
+as $profile_id$
 begin
   if new.role = 'tailor' and new.global_id is null then
     new.global_id := 'TW' || lpad(nextval('public.tailor_id_seq')::text, 6, '0');
@@ -49,7 +49,7 @@ begin
   end if;
   return new;
 end;
-$;
+$profile_id$;
 
 create trigger profiles_assign_global_id
 before insert on public.profiles
