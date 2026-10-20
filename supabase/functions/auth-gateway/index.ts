@@ -55,6 +55,18 @@ Deno.serve(async (req) => {
       return reply(400, { error: "Company name, valid company code aur owner name required hai." });
     }
 
+    // Atomic server-side signup limiter; never expose the limiter RPC to client roles.
+    const { data: signupAllowed, error: signupLimitError } = await admin.rpc(
+      "consume_signup_attempt",
+      { p_mobile: mobile },
+    );
+    if (signupLimitError) {
+      return reply(503, { error: "Registration security service unavailable." });
+    }
+    if (signupAllowed !== true) {
+      return reply(429, { error: "Is mobile number se bahut registrations try hue. Ek ghante baad try karein." });
+    }
+
     // Create auth identity first; do not trust any client-supplied role or company_id.
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
       email: authAlias(mobile),
