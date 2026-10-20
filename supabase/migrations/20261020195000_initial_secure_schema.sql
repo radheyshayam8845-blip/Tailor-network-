@@ -25,11 +25,30 @@ create table public.profiles (
   name text not null,
   mobile text not null unique,
   company_id uuid references public.companies(id),
-  global_id text unique default ('TW' || lpad(nextval('public.tailor_id_seq')::text, 6, '0')),
+  global_id text unique,
   created_at timestamptz not null default now(),
   check ((role = 'admin' and company_id is not null and global_id is null)
       or (role = 'tailor' and company_id is null and global_id is not null))
 );
+
+create or replace function public.assign_profile_global_id()
+returns trigger
+language plpgsql
+set search_path = ''
+as $
+begin
+  if new.role = 'tailor' and new.global_id is null then
+    new.global_id := 'TW' || lpad(nextval('public.tailor_id_seq')::text, 6, '0');
+  elsif new.role = 'admin' then
+    new.global_id := null;
+  end if;
+  return new;
+end;
+$;
+
+create trigger profiles_assign_global_id
+before insert on public.profiles
+for each row execute function public.assign_profile_global_id();
 
 create table public.invitations (
   id uuid primary key default gen_random_uuid(),
@@ -287,5 +306,5 @@ grant select, update on public.companies to authenticated;
 revoke insert, update, delete on public.subscription_invoices from anon, authenticated;
 grant select on public.subscription_invoices to authenticated;
 revoke insert, update, delete on public.invitations from anon, authenticated;
-grant select on public.invitations to authenticated;
+grant select, insert on public.invitations to authenticated;
 grant update (status) on public.invitations to authenticated;
