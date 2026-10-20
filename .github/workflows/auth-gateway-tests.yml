@@ -1,0 +1,29 @@
+name: Auth Gateway unit tests
+
+on:
+  push:
+    branches:
+      - test/auth-gateway-safe-tests
+    paths:
+      - "supabase/functions/auth-gateway/**"
+      - ".github/workflows/auth-gateway-tests.yml"
+  pull_request:
+    paths:
+      - "supabase/functions/auth-gateway/**"
+      - ".github/workflows/auth-gateway-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  auth-gateway-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Run pure security-helper tests
+        run: deno test --allow-read supabase/functions/auth-gateway/tests/security_test.ts
