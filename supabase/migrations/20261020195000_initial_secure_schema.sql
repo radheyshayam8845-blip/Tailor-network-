@@ -4,6 +4,11 @@
 
 create extension if not exists pgcrypto;
 
+create schema if not exists private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
+
+
 -- Non-repeating public IDs. Sequences are intentionally never reset.
 create sequence if not exists public.tailor_id_seq;
 create sequence if not exists public.company_id_seq;
@@ -153,9 +158,6 @@ create table public.subscription_invoices (
 );
 
 -- Security-definer helpers avoid recursive RLS evaluation on profiles/invitations.
-create schema if not exists private;
-revoke all on schema private from public, anon;
-grant usage on schema private to authenticated;
 
 create or replace function private.my_company()
 returns uuid
@@ -301,6 +303,21 @@ create policy work_entries_tailor_insert_own on public.work_entries
 create policy subscription_invoices_admin_select on public.subscription_invoices
   for select to authenticated using (company_id = (select public.my_company()));
 -- Invoice writes are reserved for trusted server-side payment functions.
+
+-- Explicit table grants: RLS controls rows; grants control API/table reachability.
+revoke all on table public.companies, public.profiles, public.invitations,
+  public.lines, public.workers, public.operations, public.styles,
+  public.dept_allocations, public.work_entries, public.subscription_invoices
+from anon, authenticated;
+
+grant select, update on public.companies to authenticated;
+grant select on public.profiles to authenticated;
+grant select, insert on public.invitations to authenticated;
+grant update (status) on public.invitations to authenticated;
+grant select, insert, update, delete on public.lines, public.workers,
+  public.operations, public.styles, public.dept_allocations, public.work_entries
+to authenticated;
+grant select on public.subscription_invoices to authenticated;
 
 -- Prevent users from escalating their profile role or changing tenant membership.
 revoke all on public.profiles from anon, authenticated;
