@@ -3600,9 +3600,9 @@ const Dashboard = ({ onLogout, drawerMode = false, drawerOpen = false, onDrawerC
                 React.createElement("div", { className: "tw-dh-chips", style: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 } },
                     React.createElement("span", { className: "tw-dh-chip", style: { color: "#FFFFFF", fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999, background: "rgba(255,255,255,0.17)", border: "1px solid rgba(255,255,255,0.32)" } }, setDeptCount + (setDeptCount === 1 ? " department" : " departments")),
                     React.createElement("span", { className: "tw-dh-chip", style: { color: "#FFFFFF", fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999, background: "rgba(255,255,255,0.17)", border: "1px solid rgba(255,255,255,0.32)" } }, setSub.text))),
-            React.createElement("div", { className: "tw-drawer-body", style: { display: "flex", flexDirection: "column", paddingTop: 20 } },
-                React.createElement("p", { className: "tw-set-lbl" }, "Company"),
-                React.createElement("div", { className: "tw-set-grp" },
+            React.createElement("div", { className: "tw-drawer-body", style: { display: "flex", flexDirection: "column", paddingTop: 20, flex: "1 1 auto", minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
+                React.createElement("p", { className: "tw-set-lbl", style: { flex: "none" } }, "Company"),
+                React.createElement("div", { className: "tw-set-grp", style: { flex: "none" } },
                     React.createElement(SetRow, { icon: Building2, title: "Company profile", summary: setProfileSummary, open: openSet === "profile", onClick: () => toggleSet("profile") },
                         React.createElement("div", { className: "space-y-2" },
                             React.createElement("div", { className: "rounded-xl bg-green-50 border border-green-100 p-3 space-y-2" },
@@ -3655,11 +3655,11 @@ const Dashboard = ({ onLogout, drawerMode = false, drawerOpen = false, onDrawerC
                                         React.createElement("button", { "aria-label": "Decrease grace days", onClick: () => setPendingGraceDays(Math.max(0, (entryGraceDays || 0) - 1)), className: "w-8 h-8 rounded-lg border border-gray-200 text-gray-900 font-extrabold text-base flex items-center justify-center active:bg-gray-50" }, "\u2212"),
                                         React.createElement("span", { className: "text-base font-extrabold text-gray-900 w-6 text-center" }, entryGraceDays),
                                         React.createElement("button", { "aria-label": "Increase grace days", onClick: () => setPendingGraceDays(Math.min(30, (entryGraceDays || 0) + 1)), className: "w-8 h-8 rounded-lg border border-gray-200 text-gray-900 font-extrabold text-base flex items-center justify-center active:bg-gray-50" }, "+"))))))),
-                React.createElement("p", { className: "tw-set-lbl" }, "Subscriptions"),
-                React.createElement("div", { className: "tw-set-grp" },
+                React.createElement("p", { className: "tw-set-lbl", style: { flex: "none" } }, "Subscriptions"),
+                React.createElement("div", { className: "tw-set-grp", style: { flex: "none" } },
                     React.createElement(SetRow, { icon: ClipboardList, title: "Subscription", summary: setSub.text, summaryTone: setSub.tone, alert: setSubInfo.blocked || setSubInfo.inGrace, open: openSet === "workSub", onClick: () => toggleSet("workSub") },
                         React.createElement(SubscriptionCard, { bare: true, companyId: user?.companyId, activeCount: setActiveCount, inactiveCount: setInactiveCount, onChange: () => setSubTick(t => t + 1) }))),
-                onLogout && (React.createElement("div", { className: "tw-set-out", style: { marginTop: "auto", padding: "6px 16px 14px" } },
+                onLogout && (React.createElement("div", { className: "tw-set-out", style: { marginTop: "auto", padding: "6px 16px 14px", flex: "none" } },
                     React.createElement("button", { onClick: onLogout, className: "w-full flex items-center justify-center gap-2 border border-red-200 bg-white text-red-600 font-bold py-3 rounded-2xl text-sm active:bg-red-50 transition" },
                         React.createElement("svg", { width: "18", height: "18", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.2", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, React.createElement("path", { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" }), React.createElement("polyline", { points: "16 17 21 12 16 7" }), React.createElement("line", { x1: "21", y1: "12", x2: "9", y2: "12" })),
                         "Sign Out"))),
@@ -11031,6 +11031,15 @@ const GlobalStyles = () => (React.createElement("style", null, `
     .tw-drawer .tw-set-item:nth-child(2) .tw-set-ic { background:#E8F1FF; color:#1D63D1; }
     .tw-drawer .tw-set-item:nth-child(3) .tw-set-ic { background:#FFF2DB; color:#B76A00; }
     .tw-drawer .tw-set-lbl + .tw-set-grp ~ .tw-set-lbl + .tw-set-grp .tw-set-ic { background:#F1E9FF; color:#7440D1; }
+    html body .tw-drawer .tw-drawer-body:not(#tw-ns) > * { flex:none; }
+    html body .tw-drawer .tw-drawer-body:not(#tw-ns) { overflow-y:auto; min-height:0; flex:1 1 auto; }
+    html body .tw-drawer .tw-set-grp:not(#tw-ns) { overflow:hidden; }
+    html body .tw-drawer .tw-set-panel .px-4:not(#tw-ns) { padding:4px 16px 18px; }
+    html body .tw-drawer .tw-set-panel input:not(#tw-ns) { border:1.5px solid #D7E4DC; border-radius:14px; padding:12px 14px; font-size:15px; font-weight:600; background:#FFFFFF; }
+    html body .tw-drawer .tw-set-panel input:focus:not(#tw-ns) { border-color:#078747; outline:0; box-shadow:0 0 0 3px rgba(7,135,71,0.16); }
+    html body .tw-drawer .tw-set-panel .space-y-2 > * + *:not(#tw-ns) { margin-top:14px; }
+    html body .tw-drawer .tw-set-panel .rounded-xl.bg-green-50:not(#tw-ns) { border-radius:18px; padding:14px; background:#EFF9F3; border:1px solid #CFE8D8; }
+    html body .tw-drawer .tw-set-panel label.block:not(#tw-ns) { font-size:13px; font-weight:800; color:#172033; }
     html body .tw-drawer .tw-set-out:not(#tw-ns) { margin-top:auto; padding:6px 16px calc(env(safe-area-inset-bottom,0px) + 14px); }
     html body .tw-drawer .tw-set-out button:not(#tw-ns) { background:#FFF1F1; border:1.5px solid #FBC9C9; color:#D92D20; border-radius:20px; padding:14px; font-size:15px; font-weight:800; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; }
 
