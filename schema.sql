@@ -4,6 +4,11 @@
 
 create extension if not exists pgcrypto;
 
+create schema if not exists private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
+
+
 -- Non-repeating public IDs. Sequences are intentionally never reset.
 create sequence if not exists public.tailor_id_seq;
 create sequence if not exists public.company_id_seq;
@@ -31,7 +36,7 @@ create table public.profiles (
       or (role = 'tailor' and company_id is null and global_id is not null))
 );
 
-create or replace function public.assign_profile_global_id()
+create or replace function private.assign_profile_global_id()
 returns trigger
 language plpgsql
 set search_path = ''
@@ -48,7 +53,7 @@ $;
 
 create trigger profiles_assign_global_id
 before insert on public.profiles
-for each row execute function public.assign_profile_global_id();
+for each row execute function private.assign_profile_global_id();
 
 create table public.invitations (
   id uuid primary key default gen_random_uuid(),
@@ -153,7 +158,8 @@ create table public.subscription_invoices (
 );
 
 -- Security-definer helpers avoid recursive RLS evaluation on profiles/invitations.
-create or replace function public.my_company()
+
+create or replace function private.my_company()
 returns uuid
 language sql stable security definer
 set search_path = ''
@@ -165,7 +171,7 @@ as $$
   limit 1
 $$;
 
-create or replace function public.is_my_worker(p_worker_id uuid)
+create or replace function private.is_my_worker(p_worker_id uuid)
 returns boolean
 language sql stable security definer
 set search_path = ''
@@ -179,7 +185,7 @@ $$;
 
 -- A submitted rate is never trusted: it is read from the same company's operation.
 -- Composite foreign keys also prevent cross-company references.
-create or replace function public.set_work_entry_rate()
+create or replace function private.set_work_entry_rate()
 returns trigger
 language plpgsql
 security definer
@@ -229,7 +235,7 @@ $$;
 create trigger work_entries_set_rate
 before insert or update of company_id, worker_id, style_id, operation_id, piece_rate
 on public.work_entries
-for each row execute function public.set_work_entry_rate();
+for each row execute function private.set_work_entry_rate();
 
 -- RLS is enabled on every table exposed to the application.
 alter table public.companies enable row level security;
@@ -248,15 +254,15 @@ create policy profiles_select_self on public.profiles
 -- No client insert/update/delete on profiles: trusted signup/onboarding flow will create them.
 
 create policy companies_select_admin on public.companies
-  for select to authenticated using (id = (select public.my_company()));
+  for select to authenticated using (id = (select private.my_company()));
 create policy companies_update_admin on public.companies
-  for update to authenticated using (id = (select public.my_company()))
-  with check (id = (select public.my_company()));
+  for update to authenticated using (id = (select private.my_company()))
+  with check (id = (select private.my_company()));
 
 create policy invitations_admin_all on public.invitations
   for all to authenticated
-  using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy invitations_tailor_select on public.invitations
   for select to authenticated using (tailor_user_id = (select auth.uid()));
 create policy invitations_tailor_respond on public.invitations
@@ -265,38 +271,53 @@ create policy invitations_tailor_respond on public.invitations
   with check (tailor_user_id = (select auth.uid()) and status in ('accepted','rejected'));
 
 create policy lines_admin_all on public.lines
-  for all to authenticated using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  for all to authenticated using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy workers_admin_all on public.workers
-  for all to authenticated using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  for all to authenticated using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy workers_tailor_select_own on public.workers
   for select to authenticated using (tailor_user_id = (select auth.uid()));
 create policy operations_admin_all on public.operations
-  for all to authenticated using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  for all to authenticated using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy styles_admin_all on public.styles
-  for all to authenticated using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  for all to authenticated using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy dept_allocations_admin_all on public.dept_allocations
-  for all to authenticated using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  for all to authenticated using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy work_entries_admin_all on public.work_entries
-  for all to authenticated using (company_id = (select public.my_company()))
-  with check (company_id = (select public.my_company()));
+  for all to authenticated using (company_id = (select private.my_company()))
+  with check (company_id = (select private.my_company()));
 create policy work_entries_tailor_select_own on public.work_entries
-  for select to authenticated using ((select public.is_my_worker(worker_id)));
+  for select to authenticated using ((select private.is_my_worker(worker_id)));
 create policy work_entries_tailor_insert_own on public.work_entries
   for insert to authenticated
   with check (
     entered_by = (select auth.uid())
-    and (select public.is_my_worker(worker_id))
+    and (select private.is_my_worker(worker_id))
     and company_id = (select w.company_id from public.workers w where w.id = worker_id and w.tailor_user_id = (select auth.uid()))
   );
 
 create policy subscription_invoices_admin_select on public.subscription_invoices
-  for select to authenticated using (company_id = (select public.my_company()));
+  for select to authenticated using (company_id = (select private.my_company()));
 -- Invoice writes are reserved for trusted server-side payment functions.
+
+-- Explicit table grants: RLS controls rows; grants control API/table reachability.
+revoke all on table public.companies, public.profiles, public.invitations,
+  public.lines, public.workers, public.operations, public.styles,
+  public.dept_allocations, public.work_entries, public.subscription_invoices
+from anon, authenticated;
+
+grant select, update on public.companies to authenticated;
+grant select on public.profiles to authenticated;
+grant select, insert on public.invitations to authenticated;
+grant update (status) on public.invitations to authenticated;
+grant select, insert, update, delete on public.lines, public.workers,
+  public.operations, public.styles, public.dept_allocations, public.work_entries
+to authenticated;
+grant select on public.subscription_invoices to authenticated;
 
 -- Prevent users from escalating their profile role or changing tenant membership.
 revoke all on public.profiles from anon, authenticated;
@@ -308,3 +329,11 @@ grant select on public.subscription_invoices to authenticated;
 revoke insert, update, delete on public.invitations from anon, authenticated;
 grant select, insert on public.invitations to authenticated;
 grant update (status) on public.invitations to authenticated;
+
+
+revoke all on function private.my_company() from public, anon;
+revoke all on function private.is_my_worker(uuid) from public, anon;
+revoke all on function private.set_work_entry_rate() from public, anon, authenticated;
+revoke all on function private.assign_profile_global_id() from public, anon, authenticated;
+grant execute on function private.my_company() to authenticated;
+grant execute on function private.is_my_worker(uuid) to authenticated;
