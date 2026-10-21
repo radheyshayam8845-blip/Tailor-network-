@@ -1,6 +1,6 @@
 -- Server-side login throttling. No client role can read or mutate these records.
 create table if not exists public.auth_login_attempts (
-  mobile text primary key check (mobile ~ '^\d{10}$'),
+  mobile text primary key check (mobile ~ '^\\d{10}$'),
   attempt_count integer not null default 0 check (attempt_count >= 0),
   window_started_at timestamptz not null default now(),
   locked_until timestamptz
@@ -18,12 +18,12 @@ set search_path = ''
 as $$
 declare
   current_row public.auth_login_attempts%rowtype;
-  current_time timestamptz := clock_timestamp();
+  v_now timestamptz := clock_timestamp();
 begin
-  if p_mobile !~ '^\d{10}$' then return false; end if;
+  if p_mobile is null or p_mobile !~ '^\\d{10}$' then return false; end if;
 
   insert into public.auth_login_attempts(mobile, attempt_count, window_started_at)
-  values (p_mobile, 0, current_time)
+  values (p_mobile, 0, v_now)
   on conflict (mobile) do nothing;
 
   select * into current_row
@@ -31,20 +31,20 @@ begin
   where mobile = p_mobile
   for update;
 
-  if current_row.locked_until is not null and current_row.locked_until > current_time then
+  if current_row.locked_until is not null and current_row.locked_until > v_now then
     return false;
   end if;
 
-  if current_time - current_row.window_started_at >= interval '15 minutes' then
+  if v_now - current_row.window_started_at >= interval '15 minutes' then
     update public.auth_login_attempts
-      set attempt_count = 1, window_started_at = current_time, locked_until = null
+      set attempt_count = 1, window_started_at = v_now, locked_until = null
       where mobile = p_mobile;
     return true;
   end if;
 
   if current_row.attempt_count >= 9 then
     update public.auth_login_attempts
-      set locked_until = current_time + interval '15 minutes'
+      set locked_until = v_now + interval '15 minutes'
       where mobile = p_mobile;
     return false;
   end if;
