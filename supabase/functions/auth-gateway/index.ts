@@ -51,7 +51,19 @@ Deno.serve(async (req) => {
       return reply(400, { error: "Company name, valid company code aur owner name required hai." });
     }
 
-    // Create auth identity first; do not trust any client-supplied role or company_id.
+    // Fail closed: do not create an auth identity unless the server-side signup limiter succeeds.
+    const { data: signupAllowed, error: signupLimitError } = await admin.rpc(
+      "consume_signup_attempt",
+      { p_mobile: mobile },
+    );
+    if (signupLimitError) {
+      return reply(503, { error: "Signup security service unavailable. Please try again later." });
+    }
+    if (signupAllowed !== true) {
+      return reply(429, { error: "Bahut zyada registration attempts. Ek ghante baad try karein." });
+    }
+
+    // Create auth identity only after rate limiting; never trust client-supplied role/company_id.
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
       email: authAlias(mobile),
       password: pin,
